@@ -19,45 +19,42 @@
 # WANT_JSON
 # POWERSHELL_COMMON
 
-$params = Parse-Args $args;
+$params = Parse-Args $args
 
-$result = New-Object psobject;
-Set-Attr $result "changed" $false;
+$path = Get-Attr $params "path" -failifempty $true
 
-If (-not $params.path.GetType)
-{
-    Fail-Json $result "missing required arguments: path"
+$state = (Get-Attr $params "state" "present").ToString().ToLower()
+If (($state -ne 'present') -and ($state -ne 'absent')) {
+    Fail-Json "state is '$state'; must be 'present' or 'absent'"
 }
 
-$extra_args = ""
-If ($params.extra_args.GetType)
-{
-    $extra_args = $params.extra_args;
+$extra_args = Get-Attr $params "extra_args" ""
+
+$creates = Get-Attr $params "creates" ""
+
+$result = New-Object PSObject -Property @{
+    changed = $false
+};
+
+If ($creates -and (Test-Path $creates)) {
+    Exit-Json $result;
 }
 
-If ($params.creates.GetType -and $params.state.GetType -and $params.state -ne "absent")
+$logfile = [System.IO.Path]::GetTempFileName()
+if ($state -eq "absent")
 {
-    If (Test-File $creates)
-    {
-        Exit-Json $result;
-    }
-}
-
-$logfile = [IO.Path]::GetTempFileName();
-if ($params.state.GetType -and $params.state -eq "absent")
-{
-    msiexec.exe /x $params.path /qb /l $logfile $extra_args;
+    $out = msiexec.exe /x $path /qn /L $logfile $extra_args
 }
 Else
 {
-    msiexec.exe /i $params.path /qb /l $logfile $extra_args;
+    $out = msiexec.exe /i $path /qn /L $logfile $extra_args
 }
 
-Set-Attr $result "changed" $true;
+Set-Attr $result "changed" $true
 
-$logcontents = Get-Content $logfile;
-Remove-Item $logfile;
+$logcontents = Get-Content $logfile
+Remove-Item $logfile
 
-Set-Attr $result "log" $logcontents;
+Set-Attr $result "log" $logcontents
 
-Exit-Json $result;
+Exit-Json $result
