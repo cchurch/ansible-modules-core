@@ -124,6 +124,13 @@ options:
     required: false
     default: null
     aliases: []
+  user_data_b64:
+    version_added: "1.9"
+    description:
+      - base64-encoded blob of data which is made available to the ec2 instance
+    required: false
+    default: null
+    aliases: []
   instance_tags:
     version_added: "1.0"
     description:
@@ -468,6 +475,7 @@ EXAMPLES = '''
 
 '''
 
+import base64
 import sys
 import time
 from ast import literal_eval
@@ -739,6 +747,7 @@ def create_instances(module, ec2, override_count=None):
     spot_wait_timeout = int(module.params.get('spot_wait_timeout'))
     placement_group = module.params.get('placement_group')
     user_data = module.params.get('user_data')
+    user_data_b64 = module.params.get('user_data_b64')
     instance_tags = module.params.get('instance_tags')
     vpc_subnet_id = module.params.get('vpc_subnet_id')
     assign_public_ip = module.boolean(module.params.get('assign_public_ip'))
@@ -805,6 +814,9 @@ def create_instances(module, ec2, override_count=None):
                       'kernel_id': kernel,
                       'ramdisk_id': ramdisk,
                       'user_data': user_data}
+
+            if user_data_b64:
+                params['user_data'] = base64.b64decode(user_data_b64)
 
             if ebs_optimized:
               params['ebs_optimized'] = ebs_optimized
@@ -1138,6 +1150,7 @@ def main():
             spot_wait_timeout = dict(default=600),
             placement_group = dict(),
             user_data = dict(),
+            user_data_b64 = dict(),
             instance_tags = dict(type='dict'),
             vpc_subnet_id = dict(),
             assign_public_ip = dict(type='bool', default=False),
